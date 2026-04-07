@@ -130,6 +130,9 @@ export function useTasks() {
           labelIds.map((lid) => ({ task_id: taskId, label_id: lid }))
         );
       }
+      // Small delay to ensure Supabase has committed the label changes
+      // before fetchTasks re-queries with the join
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     // Log status changes

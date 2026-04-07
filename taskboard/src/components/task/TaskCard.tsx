@@ -33,12 +33,19 @@ export function TaskCard({ task, onClick, isDragOverlay }: TaskCardProps) {
   const dueDateStatus = getDueDateStatus(task.due_date);
   const priorityCfg = PRIORITY_CONFIG[task.priority];
 
+  const STATUS_COLORS: Record<string, string> = {
+  todo:        "#94a3b8",
+  in_progress: "#f59e0b",
+  in_review:   "#818cf8",
+  done:        "#34d399",
+};
+const statusGradientColor = STATUS_COLORS[task.status] ?? "#94a3b8";
+
   return (
     <div
       ref={setNodeRef}
       style={{
-        ...style,
-        background: "var(--surface-2)",
+        background: `linear-gradient(to bottom, ${statusGradientColor}18 0%, var(--surface-2) 55%)`,
         border: "1px solid var(--border)",
         ...(isDragOverlay
           ? { boxShadow: "var(--shadow-modal)", border: "1px solid var(--border-strong)" }
@@ -55,14 +62,14 @@ export function TaskCard({ task, onClick, isDragOverlay }: TaskCardProps) {
         if (!isDragging && !isDragOverlay) {
           const el = e.currentTarget as HTMLElement;
           el.style.borderColor = "var(--border-strong)";
-          el.style.background = "var(--surface-3)";
+          el.style.background = `linear-gradient(to bottom, ${statusGradientColor}28 0%, var(--surface-3) 55%)`;
         }
       }}
       onMouseLeave={(e) => {
         if (!isDragOverlay) {
           const el = e.currentTarget as HTMLElement;
           el.style.borderColor = "var(--border)";
-          el.style.background = "var(--surface-2)";
+          el.style.background = `linear-gradient(to bottom, ${statusGradientColor}18 0%, var(--surface-2) 55%)`;
         }
       }}
     >

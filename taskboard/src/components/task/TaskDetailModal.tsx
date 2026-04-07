@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Trash2, MessageSquare, Activity } from "lucide-react";
 import { ModalOverlay } from "./CreateTaskModal";
 import { useTaskDetail } from "@/hooks/useTaskDetail";
 import { formatRelativeTime, getDueDateStatus } from "@/lib/utils";
 import { PRIORITY_CONFIG, STATUS_CONFIG, COLUMNS } from "@/types";
 import type { Task, Label, Priority, Status } from "@/types";
+
 
 interface TaskDetailModalProps {
   task: Task;
@@ -38,6 +39,8 @@ export function TaskDetailModal({
   const [tab, setTab] = useState<"comments" | "activity">("comments");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const pendingLabels = useRef<string[] | null>(null);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { comments, activity, loadingDetail, fetchDetail, addComment } =
     useTaskDetail(task.id);
@@ -46,31 +49,49 @@ export function TaskDetailModal({
     fetchDetail();
   }, [fetchDetail]);
 
-  // Sync if parent task updates
-  useEffect(() => {
-    setTitle(task.title);
-    setDescription(task.description ?? "");
-    setPriority(task.priority);
-    setStatus(task.status);
-    setDueDate(task.due_date ?? "");
-    setSelectedLabels(task.labels?.map((l) => l.id) ?? []);
-  }, [task]);
 
-  async function handleSave() {
-    if (saving) return;
-    setSaving(true);
+  async function handleSave(overrides?: {
+    labelOverride?: string[];
+    statusOverride?: Status;
+    priorityOverride?: Priority;
+    dueDateOverride?: string;
+  }) {
+    // For label changes, debounce so rapid multi-selects batch into one save
+    if (overrides?.labelOverride !== undefined) {
+      pendingLabels.current = overrides.labelOverride;
+      if (saveTimeout.current) clearTimeout(saveTimeout.current);
+      saveTimeout.current = setTimeout(async () => {
+        await onUpdate(
+          task.id,
+          {
+            title: title.trim() || task.title,
+            description: description.trim() || null,
+            priority,
+            status,
+            due_date: dueDate || null,
+          },
+          pendingLabels.current ?? selectedLabels
+        );
+        pendingLabels.current = null;
+      }, 400);
+      return;
+    }
+
+    // For all other fields, save immediately
     await onUpdate(
       task.id,
       {
         title: title.trim() || task.title,
         description: description.trim() || null,
-        priority,
-        status,
-        due_date: dueDate || null,
+        priority: overrides?.priorityOverride ?? priority,
+        status: overrides?.statusOverride ?? status,
+        due_date:
+          overrides?.dueDateOverride !== undefined
+            ? overrides.dueDateOverride || null
+            : dueDate || null,
       },
       selectedLabels
     );
-    setSaving(false);
   }
 
   async function handleAddComment() {
@@ -203,8 +224,9 @@ export function TaskDetailModal({
                 <select
                   value={status}
                   onChange={(e) => {
-                    setStatus(e.target.value as Status);
-                    setTimeout(handleSave, 50);
+                    const next = e.target.value as Status;
+                    setStatus(next);
+                    handleSave({ statusOverride: next });
                   }}
                   className="w-full px-2.5 py-2 rounded-lg text-sm appearance-none"
                   style={{
@@ -226,8 +248,9 @@ export function TaskDetailModal({
                 <select
                   value={priority}
                   onChange={(e) => {
-                    setPriority(e.target.value as Priority);
-                    setTimeout(handleSave, 50);
+                    const next = e.target.value as Priority;
+                    setPriority(next);
+                    handleSave({ priorityOverride: next });
                   }}
                   className="w-full px-2.5 py-2 rounded-lg text-sm appearance-none"
                   style={{
@@ -249,8 +272,11 @@ export function TaskDetailModal({
                 <input
                   type="date"
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  onBlur={handleSave}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setDueDate(next);
+                    handleSave({ dueDateOverride: next });
+                  }}
                   className="w-full px-2.5 py-2 rounded-lg text-sm"
                   style={{
                     background: "var(--surface-2)",
@@ -301,8 +327,11 @@ export function TaskDetailModal({
                       <button
                         key={l.id}
                         onClick={() => {
-                          toggleLabel(l.id);
-                          setTimeout(handleSave, 50);
+                          const next = selectedLabels.includes(l.id)
+                            ? selectedLabels.filter((x) => x !== l.id)
+                            : [...selectedLabels, l.id];
+                          setSelectedLabels(next);
+                          handleSave({ labelOverride: next });
                         }}
                         className="text-xs px-2.5 py-1 rounded-full transition-all"
                         style={{
@@ -504,30 +533,6 @@ export function TaskDetailModal({
               )}
             </div>
           </div>
-        </div>
-
-        {/* Save footer */}
-        <div
-          className="flex items-center justify-between px-5 py-3 flex-shrink-0"
-          style={{ borderTop: "1px solid var(--border)" }}
-        >
-          <p
-            className="text-xs"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            {saving ? "Saving…" : "Changes auto-save on blur"}
-          </p>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg text-sm font-bold transition-all hover:brightness-110"
-            style={{
-              background: "var(--accent)",
-              color: "#0b0d12",
-              fontFamily: "var(--font-display)",
-            }}
-          >
-            Save
-          </button>
         </div>
       </div>
     </ModalOverlay>
