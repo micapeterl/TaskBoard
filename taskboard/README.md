@@ -1,6 +1,7 @@
 # TaskBoard
 
 A polished Kanban-style task management app built with Next.js 15, TypeScript, and Supabase.
+LIVE URL deployed on vercel: https://task-board-gquf.vercel.app
 
 ## Stack
 
