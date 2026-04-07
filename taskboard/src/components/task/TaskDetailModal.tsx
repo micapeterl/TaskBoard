@@ -193,7 +193,7 @@ export function TaskDetailModal({
             <textarea
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              onBlur={handleSave}
+              onBlur={() => handleSave()}
               className="w-full bg-transparent text-xl font-bold outline-none resize-none"
               style={{
                 color: "var(--text-primary)",
@@ -208,7 +208,7 @@ export function TaskDetailModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleSave}
+              onBlur={() => handleSave()}
               placeholder="Add a description…"
               className="w-full bg-transparent text-sm outline-none resize-none"
               style={{
